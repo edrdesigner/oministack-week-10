@@ -1,6 +1,7 @@
 const api = require("../services/api");
 const Dev = require("../models/Dev");
 const parseStringAsArray = require("../utils/parseStringAsArray");
+const { findConnections, sendMessage } = require("../websocket");
 
 module.exports = {
   async index(req, res) {
@@ -16,7 +17,7 @@ module.exports = {
     let dev = await Dev.findOne({ github_username });
 
     if (!dev) {
-      const techArray = parseStringAsArray(techs);
+      const techsArray = parseStringAsArray(techs);
 
       const location = {
         type: "Point",
@@ -28,9 +29,18 @@ module.exports = {
         name,
         avatar_url,
         bio,
-        techs: techArray,
+        techs: techsArray,
         location
       });
+
+      // filter connection that are in 10km of distance
+      // and that the new dev has this techs
+      const sendSocketMessageTo = findConnections(
+        { latitude, longitude },
+        techsArray
+      );
+
+      sendMessage(sendSocketMessageTo, "new-dev", dev);
     }
 
     return res.json(dev);
